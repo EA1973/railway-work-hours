@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>铁路工时管家 · 离线版</title>
+<style>
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft Yahei",sans-serif;background:#f5f7fa;color:#1a2744;min-height:100vh;display:flex}
+.sidebar{width:220px;background:#fff;border-right:1px solid #e2e8f0;padding:16px 0;flex-shrink:0;position:fixed;height:100vh;overflow-y:auto}
+.sidebar-brand{padding:0 16px 16px;border-bottom:1px solid #e2e8f0;margin-bottom:8px}
+.sidebar-brand .logo{width:36px;height:36px;background:#1e3a8a;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:14px;margin-bottom:8px}
+.sidebar-brand .name{font-size:14px;font-weight:600;color:#1a2744}
+.sidebar-brand .desc{font-size:11px;color:#64748b;margin-top:2px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:13px;color:#475569;cursor:pointer;border-left:3px solid transparent;text-decoration:none}
+.nav-item:hover{background:#f1f5f9;color:#1e3a8a}
+.nav-item.active{background:#eff6ff;color:#1e3a8a;border-left-color:#1e3a8a;font-weight:500}
+.nav-item svg{width:16px;height:16px;flex-shrink:0}
+.sidebar-footer{position:absolute;bottom:0;left:0;right:0;border-top:1px solid #e2e8f0;padding:8px 0;background:#fff}
+.main{margin-left:220px;flex:1;padding:24px;min-height:100vh}
+.page{display:none;max-width:1100px}
+.page.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+h1{font-size:22px;font-weight:600;margin-bottom:4px}
+.subtitle{font-size:13px;color:#64748b;margin-bottom:20px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:16px}
+.card-header{padding:14px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:14px;font-weight:600}
+.card-desc{font-size:12px;color:#64748b;margin-top:2px}
+.card-body{padding:16px}
+.card-footer{padding:12px 16px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px}
+.btn{padding:6px 14px;border-radius:6px;font-size:13px;border:1px solid #cbd5e1;background:#fff;color:#1a2744;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:#f1f5f9}
+.btn-primary{background:#1e3a8a;color:#fff;border-color:#1e3a8a}
+.btn-primary:hover{background:#1e40af}
+.btn-danger{background:#dc2626;color:#fff;border-color:#dc2626}
+.btn-danger:hover{background:#b91c1c}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-ghost{border-color:transparent;background:transparent}
+.btn-ghost:hover{background:#f1f5f9}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi-card{background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:14px}
+.kpi-label{font-size:12px;color:#64748b;margin-bottom:6px}
+.kpi-value{font-size:24px;font-weight:700;color:#1a2744;font-variant-numeric:tabular-nums;font-family:"SF Mono","Cascadia Code",monospace}
+.kpi-value.accent{color:#1e3a8a}
+.kpi-value.warn{color:#d97706}
+.kpi-value.danger{color:#dc2626}
+.kpi-value.success{color:#059669}
+.kpi-sub{font-size:11px;color:#94a3b8;margin-top:4px}
+.tabs{display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:16px}
+.tab{padding:8px 16px;font-size:13px;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab:hover{color:#1e3a8a}
+.tab.active{color:#1e3a8a;border-bottom-color:#1e3a8a;font-weight:500}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 12px;font-weight:500;color:#64748b;font-size:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+tr:hover td{background:#f8fafc}
+tr:last-child td{border-bottom:none}
+.table-wrap{overflow-x:auto}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:500}
+.badge-driver{background:#eff6ff;color:#1e40af}
+.badge-assistant{background:#ecfeff;color:#0e7490}
+.badge-both{background:#f0fdf4;color:#15803d}
+.badge-default{background:#f1f5f9;color:#475569}
+.badge-overtime{background:#fef2f2;color:#dc2626}
+.mono{font-variant-numeric:tabular-nums;font-family:"SF Mono","Cascadia Code",monospace}
+.filter-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.filter-row input,.filter-row select{padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:inherit;background:#fff}
+.filter-row input:focus,.filter-row select:focus{outline:none;border-color:#1e3a8a;box-shadow:0 0 0 2px rgba(30,58,138,.1)}
+.filter-row label{font-size:12px;color:#64748b}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;color:#475569;margin-bottom:5px;font-weight:500}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:inherit;background:#fff}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:#1e3a8a;box-shadow:0 0 0 2px rgba(30,58,138,.1)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-full{grid-column:1/-1}
+textarea{resize:vertical;min-height:70px}
+.summary-bar{background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:12px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.summary-bar .amount{font-size:20px;font-weight:700;color:#0369a1;font-variant-numeric:tabular-nums}
+.empty-state{text-align:center;padding:40px 20px;color:#94a3b8}
+.empty-state .icon{font-size:32px;margin-bottom:8px;opacity:.3}
+.empty-state .text{font-size:13px}
+.overtime-panel .card-header{border-left:3px solid #1e3a8a}
+.overtime-panel.assistant .card-header{border-left-color:#0891b2}
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:100;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex}
+.modal{background:#fff;border-radius:8px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 25px -5px rgba(0,0,0,.1)}
+.modal-header{padding:16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:16px;font-weight:600}
+.modal-body{padding:16px}
+.modal-footer{padding:12px 16px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px}
+.modal-close:hover{background:#f1f5f9;color:#475569}
+/* Toast */
+.toast-container{position:fixed;top:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:12px 16px;box-shadow:0 4px 6px -1px rgba(0,0,0,.1);font-size:13px;min-width:240px;animation:slideIn .2s ease}
+.toast.success{border-left:3px solid #059669}
+.toast.error{border-left:3px solid #dc2626}
+.toast.info{border-left:3px solid #1e3a8a}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.chart-wrap{width:100%;height:240px}
+.chart-wrap canvas{width:100%!important;height:100%!important}
+.chart-legend{display:flex;gap:16px;font-size:12px;color:#64748b;margin-top:8px;justify-content:center}
+.legend-dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.section-title{font-size:14px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-title::before{content:'';width:3px;height:14px;background:#1e3a8a;border-radius:2px}
+
+</style>
+</head>
+<body>
+
+<!-- 侧边栏 -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo">铁</div>
+    <div class="name">铁路工作助手</div>
+    <div class="desc">离线版 · 数据安全</div>
+  </div>
+  <nav>
+    <a class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+      数据概览
+    </a>
+    <a class="nav-item" data-page="work-hours" onclick="navigate('work-hours')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      工时记录
+    </a>
+    <a class="nav-item" data-page="crew-expense" onclick="navigate('crew-expense')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      乘务费用
+    </a>
+    <a class="nav-item" data-page="overtime" onclick="navigate('overtime')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 29H14V19H10z"/><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      超劳统计
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <a class="nav-item" data-page="settings" onclick="navigate('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      个人设置
+    </a>
+  </div>
+</aside>
+
+<!-- 主内容 -->
+<main class="main">
+
+  <!-- 数据概览 -->
+  <section id="page-dashboard" class="page active">
+    <h1>数据概览</h1>
+    <p class="subtitle">一眼掌握整体工作情况</p>
+
+    <div class="tabs" style="width:fit-content">
+      <div class="tab dim-tab active" data-dim="week" onclick="switchDimension('day')">日</div>
+      <div class="tab dim-tab" data-dim="week" onclick="switchDimension('week')">周</div>
+      <div class="tab dim-tab" data-dim="month" onclick="switchDimension('month')">月</div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-label">总工时</div>
+        <div class="kpi-value accent mono" id="kpi-total">0h</div>
+        <div class="kpi-sub">出勤总时长</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">乘务费用</div>
+        <div class="kpi-value success mono" id="kpi-expense">¥0</div>
+        <div class="kpi-sub">累计费用金额</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">司机超劳</div>
+        <div class="kpi-value danger mono" id="kpi-driver">0h</div>
+        <div class="kpi-sub">超劳累计时长</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">副司机超劳</div>
+        <div class="kpi-value warn mono" id="kpi-assistant">0h</div>
+        <div class="kpi-sub">超劳累计时长</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">工时趋势</div>
+          <div class="card-desc">最近 7 天</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:#1e3a8a"></span>司机</span>
+          <span><span class="legend-dot" style="background:#0891b2"></span>副司机</span>
+          <span><span class="legend-dot" style="background:#dc2626"></span>标准工时</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">最近工时记录</div>
+          <button class="btn btn-sm" onclick="navigate('work-hours')">查看全部</button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>日期</th><th>角色</th><th>车次</th><th>出勤-退勤</th><th>工时</th>
+              </tr></thead>
+              <tbody id="recent-wh"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">最近费用记录</div>
+          <button class="btn btn-sm" onclick="navigate('crew-expense')">查看全部</button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>日期</th><th>车次</th><th>类型</th><th>角色</th><th style="text-align:right">金额</th>
+              </tr></thead>
+              <tbody id="recent-ex"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 工时记录 -->
+  <section id="page-work-hours" class="page">
+    <h1>工时记录</h1>
+    <p class="subtitle">快速录入出勤退勤时间，管理历史工时记录</p>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">快速筛选</div>
+        <button class="btn btn-primary" onclick="openWorkHourForm()">+ 添加记录</button>
+      </div>
+      <div class="card-body">
+        <div class="filter-row">
+          <label>起始日期<br><input type="date" onchange="whFilter.dateFrom=this.value;renderWorkHours()"></label>
+          <label>结束日期<br><input type="date" onchange="whFilter.dateTo=this.value;renderWorkHours()"></label>
+          <label>角色<br>
+            <select onchange="whFilter.role=this.value;renderWorkHours()">
+              <option value="all">全部</option>
+              <option value="driver">司机</option>
+              <option value="assistant">副司机</option>
+            </select>
+          </label>
+          <label>搜索<br><input type="text" placeholder="车次/区段/备注" oninput="whFilter.keyword=this.value;renderWorkHours()"></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>日期</th><th>角色</th><th>客货</th><th>车次</th><th>值乘区段</th><th>出勤-退勤</th><th>工时</th><th style="text-align:right">操作</th>
+            </tr></thead>
+            <tbody id="wh-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 乘务费用 -->
+  <section id="page-crew-expense" class="page">
+    <h1>乘务费用</h1>
+    <p class="subtitle">记录和管理每趟乘务的费用信息</p>
+
+    <div class="summary-bar">
+      <div>
+        <div style="font-size:12px;color:#0369a1;margin-bottom:2px">当前筛选总金额</div>
+        <div class="amount mono" id="ex-total">¥0.00</div>
+      </div>
+      <button class="btn btn-primary" onclick="openExpenseForm()">+ 添加费用</button>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="filter-row">
+          <label>起始日期<br><input type="date" onchange="exFilter.dateFrom=this.value;renderExpenses()"></label>
+          <label>结束日期<br><input type="date" onchange="exFilter.dateTo=this.value;renderExpenses()"></label>
+          <label>费用类型<br>
+            <select onchange="exFilter.type=this.value;renderExpenses()">
+              <option value="all">全部</option>
+              <option value="出乘费">出乘费</option>
+              <option value="加班费">加班费</option>
+              <option value="其他">其他</option>
+            </select>
+          </label>
+          <label>搜索<br><input type="text" placeholder="车次/备注" oninput="exFilter.keyword=this.value;renderExpenses()"></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>日期</th><th>车次</th><th>类型</th><th>角色</th><th>金额</th><th>备注</th><th style="text-align:right">操作</th>
+            </tr></thead>
+            <tbody id="ex-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 超劳统计 -->
+  <section id="page-overtime" class="page">
+    <h1>超劳统计</h1>
+    <p class="subtitle">司机与副司机超劳工时独立统计</p>
+
+    <div class="tabs" style="width:fit-content">
+      <div class="tab ot-dim-tab" data-dim="day" onclick="switchOvertimeDim('day')">日</div>
+      <div class="tab ot-dim-tab" data-dim="week" onclick="switchOvertimeDim('week')">周</div>
+      <div class="tab ot-dim-tab active" data-dim="month" onclick="switchOvertimeDim('month')">月</div>
+    </div>
+
+    <div class="two-col">
+      <div class="card overtime-panel">
+        <div class="card-header">
+          <div>
+            <div class="card-title">司机超劳</div>
+            <div class="card-desc">独立统计，数据互不干扰</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="kpi-row" style="grid-template-columns:repeat(2,1fr)">
+            <div class="kpi-card" style="border:none;padding:0;background:transparent">
+              <div class="kpi-label">总工时</div>
+              <div class="kpi-value accent mono" id="ot-driver-total">0h</div>
+            </div>
+            <div class="kpi-card" style="border:none;padding:0;background:transparent">
+              <div class="kpi-label">超劳时长</div>
+              <div class="kpi-value danger mono" id="ot-driver-ot">0h</div>
+            </div>
+            <div class="kpi-card" style="border:none;padding:0;background:transparent">
+              <div class="kpi-label">超劳天数</div>
+              <div class="kpi-value mono" id="ot-driver-days">0 天</div>
+            </div>
+            <div class="kpi-card" style="border:none;padding:0;background:transparent">
+              <div class="kpi-label">超劳工资</div>
+              <div class="kpi-value success mono" id="ot-driver-pay">¥0</div>
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            <div class="section-title">超劳明细</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>日期</th><th>车次</th><th>总工时</th><th>超劳</th><th>工资</th></tr></thead>
+                <tbody id="ot-driver-list"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card overtime-panel assistant">
+        <div class="card-header">
+          <div>
+            <div class="card-title">副司机超劳</div>
+            <div class="card-desc">独立统计，数据互不干扰</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="kpi-row" style="grid-template-columns:repeat(2,1fr)">
+            <div class="kpi-card" style="border:none;padding:0;background:transparent">
+              <div class="kpi-label">总工时</div>
+              <div class="kpi-value accent mono" id="ot-asst-total">0h</div>
+            </div>
+            <div class="kpi-card" style="border:none;padding:0;background:transparent">
+              <div class="kpi-label">超劳时长</div>
+              <div class="kpi-value danger mono" id="ot-asst-ot">0h</div>
+            </div>
+            <div class="kpi-card" style="border:none;padding:0;background:transparent">
+              <div class="kpi-label">超劳天数</div>
+              <div class="kpi-value mono" id="ot-asst-days">0 天</div>
+            </div>
+            <div class="kpi-card" style="border:none;padding:0;background:transparent">
+              <div class="kpi-label">超劳工资</div>
+              <div class="kpi-value success mono" id="ot-asst-pay">¥0</div>
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            <div class="section-title">超劳明细</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>日期</th><th>车次</th><th>总工时</th><th>超劳</th><th>工资</th></tr></thead>
+                <tbody id="ot-asst-list"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 设置 -->
+  <section id="page-settings" class="page">
+    <h1>个人设置</h1>
+    <p class="subtitle">填写个人信息，系统会根据偏好自动填充</p>
+
+    <form id="settings-form" onsubmit="saveSettings(event)">
+      <div class="card" style="max-width:560px">
+        <div class="card-header">
+          <div class="card-title">个人信息</div>
+          <div class="card-desc">所有数据仅保存在本地浏览器</div>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label>姓名</label>
+            <input type="text" name="name" placeholder="请输入姓名">
+          </div>
+          <div class="form-group">
+            <label>工号</label>
+            <input type="text" name="employeeId" placeholder="请输入工号">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>默认客货类型</label>
+              <select name="defaultTrainType">
+                <option value="">不设置</option>
+                <option value="passenger">客车</option>
+                <option value="freight">货车</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>担当职务</label>
+              <select name="defaultRole">
+                <option value="">不设置</option>
+                <option value="driver">司机</option>
+                <option value="assistant">副司机</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="max-width:560px">
+        <div class="card-header">
+          <div class="card-title">超劳设置</div>
+          <div class="card-desc">用于超劳工时与工资金额计算</div>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>每日标准工时（小时）</label>
+              <input type="number" name="standardHours" min="1" step="0.5">
+            </div>
+            <div class="form-group">
+              <label>月累计工时阈值（小时）</label>
+              <input type="number" name="monthlyThreshold" min="0" step="1">
+            </div>
+            <div class="form-group">
+              <label>司机超劳单价（元/小时）</label>
+              <input type="number" name="driverRate" min="0" step="0.5">
+            </div>
+            <div class="form-group">
+              <label>副司机超劳单价（元/小时）</label>
+              <input type="number" name="assistantRate" min="0" step="0.5">
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button type="button" class="btn" onclick="renderSettings()">重置</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </div>
+    </form>
+
+    <div class="card" style="max-width:560px">
+      <div class="card-header">
+        <div class="card-title">数据备份</div>
+        <div class="card-desc">导出为 JSON 文件备份，或从备份文件恢复</div>
+      </div>
+      <div class="card-body">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn" onclick="exportAllData()">📥 导出数据</button>
+          <button type="button" class="btn" onclick="importDataClick()">📤 导入数据</button>
+        </div>
+        <p style="font-size:12px;color:#64748b;margin-top:10px;line-height:1.6">
+          • 导出内容：工时记录、乘务费用、个人设置、超劳阈值与单价<br>
+          • 导入将覆盖当前所有数据，请谨慎操作
+        </p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- 工时录入 Modal -->
+<div class="modal-overlay" id="wh-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="wh-modal-title">添加工时记录</div>
+      <button class="modal-close" onclick="closeModal('wh-modal')">&times;</button>
+    </div>
+    <form id="wh-form" onsubmit="submitWorkHour(event)">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>日期 *</label>
+            <input type="date" name="wh_date" required>
+          </div>
+          <div class="form-group">
+            <label>担当角色 *</label>
+            <select name="wh_role" required>
+              <option value="driver">司机</option>
+              <option value="assistant">副司机</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>出勤时间 *</label>
+            <input type="time" name="wh_onDuty" required>
+          </div>
+          <div class="form-group">
+            <label>退勤时间 *</label>
+            <input type="time" name="wh_offDuty" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>客货类型</label>
+            <select name="wh_trainType">
+              <option value="">--</option>
+              <option value="passenger">客车</option>
+              <option value="freight">货车</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>车次</label>
+            <input type="text" name="wh_trainNumber" placeholder="如 G1234">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>值乘区段</label>
+          <input type="text" name="wh_section" placeholder="如 北京南-上海虹桥">
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <textarea name="wh_remark" placeholder="选填"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="closeModal('wh-modal')">取消</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 费用录入 Modal -->
+<div class="modal-overlay" id="ex-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="ex-modal-title">添加费用记录</div>
+      <button class="modal-close" onclick="closeModal('ex-modal')">&times;</button>
+    </div>
+    <form id="ex-form" onsubmit="submitExpense(event)">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>日期 *</label>
+            <input type="date" name="ex_date" required>
+          </div>
+          <div class="form-group">
+            <label>车次 *</label>
+            <input type="text" name="ex_trainNumber" placeholder="如 G1234" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>费用金额（元）*</label>
+            <input type="number" name="ex_amount" min="0" step="0.5" required>
+          </div>
+          <div class="form-group">
+            <label>费用类型 *</label>
+            <select name="ex_type" required>
+              <option value="出乘费">出乘费</option>
+              <option value="加班费">加班费</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>担当角色 *</label>
+          <select name="ex_role" required>
+            <option value="driver">司机</option>
+            <option value="assistant">副司机</option>
+            <option value="both">共同</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <textarea name="ex_remark" placeholder="选填"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="closeModal('ex-modal')">取消</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast 容器 -->
+<div id="toast-container" class="toast-container"></div>
+
+<script>
+
+// ========== 铁路工时管家 · 离线版 ==========
+// 纯原生 JS 实现，零依赖，localStorage 持久化
+
+var STORAGE_KEYS = {
+  workHours: '__railway_work_hours',
+  crewExpenses: '__railway_crew_expenses',
+  overtimeConfig: '__railway_overtime_config',
+  userProfile: '__railway_user_profile',
+};
+
+var EMBEDDED_DATA = {"workHours":[{"id":"wh-mock-1","date":"2025-01-13","onDutyTime":"06:00","offDutyTime":"15:30","duration":570,"role":"driver","trainNumber":"G1234","remark":"北京南-上海虹桥","createdAt":1786506090856,"source":"mock"},{"id":"wh-mock-2","date":"2025-01-12","onDutyTime":"08:00","offDutyTime":"17:00","duration":540,"role":"assistant","trainNumber":"D5678","remark":"济南西-青岛","createdAt":1786419690856,"source":"mock"}],"crewExpenses":[{"id":"ce-mock-1","date":"2025-01-13","trainNumber":"G1234","amount":180,"type":"出乘费","role":"driver","remark":"北京南出乘","createdAt":1786506090856,"source":"mock"},{"id":"ce-mock-2","date":"2025-01-12","trainNumber":"D5678","amount":120,"type":"加班费","role":"assistant","remark":"周末加班","createdAt":1786419690856,"source":"mock"}],"userProfile":{"name":"王坤洋1","employeeId":"6404620","defaultTrainType":"passenger","defaultRole":"driver"},"overtimeConfig":{"standardHoursPerDay":10,"driverOvertimeRate":40,"assistantOvertimeRate":18}};
+
+var DEFAULT_CONFIG = {
+  standardHoursPerDay: 10,
+  monthlyOvertimeThresholdHours: 176,
+  driverOvertimeRate: 50,
+  assistantOvertimeRate: 40,
+};
+
+var DEFAULT_PROFILE = { name: '', employeeId: '', defaultTrainType: '', defaultRole: '' };
+
+// ---------- 数据层 ----------
+function loadData(key, fallback) {
+  try {
+    var raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch(e) { return fallback; }
+}
+function saveData(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+}
+function genId(prefix) {
+  return prefix + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+}
+
+// 初始化：localStorage 没数据时注入嵌入的数据
+function initData() {
+  if (!localStorage.getItem(STORAGE_KEYS.workHours)) {
+    saveData(STORAGE_KEYS.workHours, EMBEDDED_DATA.workHours || []);
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.crewExpenses)) {
+    saveData(STORAGE_KEYS.crewExpenses, EMBEDDED_DATA.crewExpenses || []);
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.overtimeConfig)) {
+    saveData(STORAGE_KEYS.overtimeConfig, EMBEDDED_DATA.overtimeConfig || DEFAULT_CONFIG);
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.userProfile)) {
+    saveData(STORAGE_KEYS.userProfile, EMBEDDED_DATA.userProfile || DEFAULT_PROFILE);
+  }
+}
+
+function getWorkHours() { return loadData(STORAGE_KEYS.workHours, []); }
+function setWorkHours(arr) { saveData(STORAGE_KEYS.workHours, arr); }
+function getExpenses() { return loadData(STORAGE_KEYS.crewExpenses, []); }
+function setExpenses(arr) { saveData(STORAGE_KEYS.crewExpenses, arr); }
+function getConfig() { return loadData(STORAGE_KEYS.overtimeConfig, DEFAULT_CONFIG); }
+function setConfig(obj) { saveData(STORAGE_KEYS.overtimeConfig, obj); }
+function getProfile() { return loadData(STORAGE_KEYS.userProfile, DEFAULT_PROFILE); }
+function setProfile(obj) { saveData(STORAGE_KEYS.userProfile, obj); }
+
+// ---------- 工具函数 ----------
+function calcDuration(onDuty, offDuty) {
+  var a = onDuty.split(':').map(Number);
+  var b = offDuty.split(':').map(Number);
+  var start = a[0] * 60 + a[1];
+  var end = b[0] * 60 + b[1];
+  if (end < start) end += 24 * 60; // 跨天
+  return end - start;
+}
+function formatDuration(min) {
+  if (!min || min <= 0) return '0小时0分钟';
+  return Math.floor(min / 60) + '小时' + (min % 60) + '分钟';
+}
+function fmtMoney(n) {
+  return '¥' + Number(n).toFixed(2);
+}
+function roleLabel(r) {
+  if (r === 'driver') return '司机';
+  if (r === 'assistant') return '副司机';
+  if (r === 'both') return '共同';
+  return r || '';
+}
+function roleBadgeClass(r) {
+  if (r === 'driver') return 'badge-driver';
+  if (r === 'assistant') return 'badge-assistant';
+  if (r === 'both') return 'badge-both';
+  return 'badge-default';
+}
+function trainTypeLabel(t) {
+  if (t === 'passenger') return '客车';
+  if (t === 'freight') return '货车';
+  return '';
+}
+function todayStr() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+// ---------- Toast ----------
+function showToast(msg, type) {
+  type = type || 'info';
+  var container = document.getElementById('toast-container');
+  var el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(function() { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; }, 2500);
+  setTimeout(function() { el.remove(); }, 2800);
+}
+
+// ---------- Modal ----------
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ---------- 路由 ----------
+var currentPage = 'dashboard';
+function navigate(hash) {
+  window.location.hash = hash;
+}
+function handleRoute() {
+  var hash = window.location.hash.slice(1) || 'dashboard';
+  currentPage = hash;
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  var page = document.getElementById('page-' + hash);
+  if (page) page.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(n) {
+    n.classList.toggle('active', n.getAttribute('data-page') === hash);
+  });
+  // 渲染对应页面
+  if (hash === 'dashboard') renderDashboard();
+  else if (hash === 'work-hours') renderWorkHours();
+  else if (hash === 'crew-expense') renderExpenses();
+  else if (hash === 'overtime') renderOvertime();
+  else if (hash === 'settings') renderSettings();
+}
+window.addEventListener('hashchange', handleRoute);
+
+// ---------- 通用：日期范围/维度 ----------
+var dashboardDimension = 'week'; // day / week / month
+function getDateRange(dimension) {
+  var now = new Date();
+  var start, end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (dimension === 'day') {
+    start = new Date(end);
+  } else if (dimension === 'week') {
+    var day = end.getDay() || 7;
+    start = new Date(end);
+    start.setDate(end.getDate() - day + 1);
+  } else {
+    start = new Date(end.getFullYear(), end.getMonth(), 1);
+  }
+  return { start: dateStr(start), end: dateStr(end) };
+}
+function dateStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function inRange(dateStrVal, range) {
+  return dateStrVal >= range.start && dateStrVal <= range.end;
+}
+
+// ---------- 概览页 ----------
+function renderDashboard() {
+  var range = getDateRange(dashboardDimension);
+  var wh = getWorkHours().filter(function(w) { return inRange(w.date, range); });
+  var ex = getExpenses().filter(function(e) { return inRange(e.date, range); });
+  var cfg = getConfig();
+
+  var totalMin = wh.reduce(function(s, w) { return s + w.duration; }, 0);
+  var totalExpense = ex.reduce(function(s, e) { return s + e.amount; }, 0);
+  var driverMin = wh.filter(function(w) { return w.role === 'driver'; }).reduce(function(s, w) { return s + w.duration; }, 0);
+  var assistantMin = wh.filter(function(w) { return w.role === 'assistant'; }).reduce(function(s, w) { return s + w.duration; }, 0);
+
+  var stdMin = cfg.standardHoursPerDay * 60;
+  var driverOvertime = wh.filter(function(w) { return w.role === 'driver' && w.duration > stdMin; })
+    .reduce(function(s, w) { return s + (w.duration - stdMin); }, 0);
+  var assistantOvertime = wh.filter(function(w) { return w.role === 'assistant' && w.duration > stdMin; })
+    .reduce(function(s, w) { return s + (w.duration - stdMin); }, 0);
+
+  // KPI
+  document.getElementById('kpi-total').textContent = (totalMin / 60).toFixed(1) + 'h';
+  document.getElementById('kpi-expense').textContent = '¥' + totalExpense.toFixed(0);
+  document.getElementById('kpi-driver').textContent = (driverOvertime / 60).toFixed(1) + 'h';
+  document.getElementById('kpi-assistant').textContent = (assistantOvertime / 60).toFixed(1) + 'h';
+
+  // 图表数据：最近7天
+  renderTrendChart();
+
+  // 最近记录
+  var recentWh = getWorkHours().sort(function(a,b) { return b.createdAt - a.createdAt; }).slice(0, 5);
+  var recentEx = getExpenses().sort(function(a,b) { return b.createdAt - a.createdAt; }).slice(0, 5);
+
+  var whTable = document.getElementById('recent-wh');
+  whTable.innerHTML = recentWh.length ? recentWh.map(function(w) {
+    return '<tr><td>' + w.date + '</td><td><span class="badge ' + roleBadgeClass(w.role) + '">' + roleLabel(w.role) + '</span></td>' +
+      '<td>' + (w.trainNumber || '-') + '</td><td class="mono">' + w.onDutyTime + ' - ' + w.offDutyTime + '</td>' +
+      '<td class="mono">' + formatDuration(w.duration) + '</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="empty-state"><div class="text">暂无工时记录</div></td></tr>';
+
+  var exTable = document.getElementById('recent-ex');
+  exTable.innerHTML = recentEx.length ? recentEx.map(function(e) {
+    return '<tr><td>' + e.date + '</td><td>' + e.trainNumber + '</td><td>' + e.type + '</td>' +
+      '<td><span class="badge ' + roleBadgeClass(e.role) + '">' + roleLabel(e.role) + '</span></td>' +
+      '<td class="mono text-right">¥' + e.amount.toFixed(2) + '</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="empty-state"><div class="text">暂无费用记录</div></td></tr>';
+}
+
+function switchDimension(dim) {
+  dashboardDimension = dim;
+  document.querySelectorAll('.dim-tab').forEach(function(t) {
+    t.classList.toggle('active', t.getAttribute('data-dim') === dim);
+  });
+  renderDashboard();
+}
+
+// ---------- 趋势图（Canvas 原生绘制）----------
+function renderTrendChart() {
+  var canvas = document.getElementById('trend-chart');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var w = canvas.parentElement.clientWidth;
+  var h = 240;
+  canvas.width = w * 2;
+  canvas.height = h * 2;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.scale(2, 2);
+
+  var days = 7;
+  var labels = [];
+  var driverData = [];
+  var assistantData = [];
+  var wh = getWorkHours();
+  var std = getConfig().standardHoursPerDay * 60;
+
+  for (var i = days - 1; i >= 0; i--) {
+    var d = new Date();
+    d.setDate(d.getDate() - i);
+    var ds = dateStr(d);
+    labels.push((d.getMonth()+1) + '/' + d.getDate());
+    var dayWh = wh.filter(function(w) { return w.date === ds; });
+    driverData.push(dayWh.filter(function(w){return w.role==='driver'}).reduce(function(s,w){return s+w.duration},0)/60);
+    assistantData.push(dayWh.filter(function(w){return w.role==='assistant'}).reduce(function(s,w){return s+w.duration},0)/60);
+  }
+
+  var maxVal = Math.max(std / 60, ...driverData.map(function(d,i){return d+assistantData[i]})) * 1.15 || 10;
+  var padL = 40, padR = 16, padT = 20, padB = 28;
+  var chartW = w - padL - padR;
+  var chartH = h - padT - padB;
+  var barW = chartW / days * 0.6;
+  var gap = chartW / days * 0.4;
+
+  // 网格线
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1;
+  ctx.font = '11px -apple-system, "PingFang SC", sans-serif';
+  ctx.fillStyle = '#94a3b8';
+  ctx.textAlign = 'right';
+  var gridLines = 4;
+  for (var g = 0; g <= gridLines; g++) {
+    var y = padT + chartH - (chartH * g / gridLines);
+    var val = (maxVal * g / gridLines).toFixed(0);
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(w - padR, y);
+    ctx.stroke();
+    ctx.fillText(val + 'h', padL - 6, y + 3);
+  }
+
+  // 标准线
+  var stdY = padT + chartH - (chartH * (std / 60) / maxVal);
+  if (stdY >= padT && stdY <= padT + chartH) {
+    ctx.strokeStyle = '#dc2626';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(padL, stdY);
+    ctx.lineTo(w - padR, stdY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#dc2626';
+    ctx.textAlign = 'left';
+    ctx.fillText('标准 ' + (std/60) + 'h', padL + 4, stdY - 4);
+  }
+
+  // 柱状图（堆叠）
+  ctx.textAlign = 'center';
+  for (var j = 0; j < days; j++) {
+    var x = padL + gap / 2 + j * (barW + gap);
+    var totalH = (driverData[j] + assistantData[j]) / maxVal * chartH;
+    var driverH = driverData[j] / maxVal * chartH;
+    var asstH = assistantData[j] / maxVal * chartH;
+
+    // 副司机（底部）
+    ctx.fillStyle = '#0891b2';
+    ctx.fillRect(x, padT + chartH - asstH, barW, asstH);
+    // 司机（上部）
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fillRect(x, padT + chartH - totalH, barW, driverH);
+
+    // x 轴标签
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(labels[j], x + barW / 2, padT + chartH + 18);
+  }
+}
+
+// ---------- 工时记录页 ----------
+var whFilter = { dateFrom: '', dateTo: '', role: 'all', keyword: '' };
+
+function renderWorkHours() {
+  var list = getWorkHours().sort(function(a,b) { return b.date.localeCompare(a.date) || b.createdAt - a.createdAt; });
+
+  // 筛选
+  if (whFilter.dateFrom) list = list.filter(function(w) { return w.date >= whFilter.dateFrom; });
+  if (whFilter.dateTo) list = list.filter(function(w) { return w.date <= whFilter.dateTo; });
+  if (whFilter.role !== 'all') list = list.filter(function(w) { return w.role === whFilter.role; });
+  if (whFilter.keyword) {
+    var kw = whFilter.keyword.toLowerCase();
+    list = list.filter(function(w) {
+      return (w.trainNumber || '').toLowerCase().indexOf(kw) >= 0 ||
+             (w.remark || '').toLowerCase().indexOf(kw) >= 0 ||
+             (w.section || '').toLowerCase().indexOf(kw) >= 0;
+    });
+  }
+
+  var tbody = document.getElementById('wh-table-body');
+  if (list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">📋</div><div class="text">暂无工时记录，点击「添加记录」开始录入</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(function(w) {
+    return '<tr>' +
+      '<td>' + w.date + '</td>' +
+      '<td><span class="badge ' + roleBadgeClass(w.role) + '">' + roleLabel(w.role) + '</span></td>' +
+      '<td>' + (w.trainType ? trainTypeLabel(w.trainType) : '-') + '</td>' +
+      '<td>' + (w.trainNumber || '-') + '</td>' +
+      '<td>' + (w.section || '-') + '</td>' +
+      '<td class="mono">' + w.onDutyTime + ' - ' + w.offDutyTime + '</td>' +
+      '<td class="mono">' + formatDuration(w.duration) + '</td>' +
+      '<td class="text-right">' +
+        '<button class="btn btn-sm btn-ghost" onclick="editWorkHour(\'' + w.id + '\')">编辑</button>' +
+        '<button class="btn btn-sm btn-ghost" style="color:#dc2626" onclick="deleteWorkHour(\'' + w.id + '\')">删除</button>' +
+      '</td></tr>';
+  }).join('');
+}
+
+function openWorkHourForm(editId) {
+  var title = document.getElementById('wh-modal-title');
+  var form = document.getElementById('wh-form');
+  form.reset();
+  form.dataset.editId = editId || '';
+
+  if (editId) {
+    title.textContent = '编辑工时记录';
+    var w = getWorkHours().find(function(x) { return x.id === editId; });
+    if (w) {
+      form.wh_date.value = w.date;
+      form.wh_onDuty.value = w.onDutyTime;
+      form.wh_offDuty.value = w.offDutyTime;
+      form.wh_role.value = w.role;
+      form.wh_trainNumber.value = w.trainNumber || '';
+      form.wh_trainType.value = w.trainType || '';
+      form.wh_section.value = w.section || '';
+      form.wh_remark.value = w.remark || '';
+    }
+  } else {
+    title.textContent = '添加工时记录';
+    form.wh_date.value = todayStr();
+    form.wh_onDuty.value = '08:00';
+    form.wh_offDuty.value = '18:00';
+    // 预填个人偏好
+    var p = getProfile();
+    if (p.defaultRole) form.wh_role.value = p.defaultRole;
+    if (p.defaultTrainType) form.wh_trainType.value = p.defaultTrainType;
+  }
+  openModal('wh-modal');
+}
+
+function submitWorkHour(e) {
+  e.preventDefault();
+  var form = document.getElementById('wh-form');
+  var editId = form.dataset.editId;
+  var date = form.wh_date.value;
+  var onDuty = form.wh_onDuty.value;
+  var offDuty = form.wh_offDuty.value;
+  var role = form.wh_role.value;
+  if (!date || !onDuty || !offDuty || !role) {
+    showToast('请填写必填项', 'error');
+    return;
+  }
+  var duration = calcDuration(onDuty, offDuty);
+  if (duration <= 0) {
+    showToast('退勤时间需晚于出勤时间', 'error');
+    return;
+  }
+
+  var item = {
+    date: date,
+    onDutyTime: onDuty,
+    offDutyTime: offDuty,
+    duration: duration,
+    role: role,
+    trainNumber: form.wh_trainNumber.value || undefined,
+    trainType: form.wh_trainType.value || undefined,
+    section: form.wh_section.value || undefined,
+    remark: form.wh_remark.value || undefined,
+  };
+
+  var list = getWorkHours();
+  if (editId) {
+    var idx = list.findIndex(function(x) { return x.id === editId; });
+    if (idx >= 0) { list[idx] = Object.assign({}, list[idx], item); }
+    showToast('记录已更新', 'success');
+  } else {
+    item.id = genId('wh');
+    item.createdAt = Date.now();
+    item.source = 'user';
+    list.unshift(item);
+    showToast('工时记录已添加', 'success');
+  }
+  setWorkHours(list);
+  closeModal('wh-modal');
+  renderWorkHours();
+  if (currentPage === 'dashboard') renderDashboard();
+  if (currentPage === 'overtime') renderOvertime();
+}
+
+function editWorkHour(id) { openWorkHourForm(id); }
+function deleteWorkHour(id) {
+  if (!confirm('确定要删除这条工时记录吗？此操作不可撤销。')) return;
+  var list = getWorkHours().filter(function(w) { return w.id !== id; });
+  setWorkHours(list);
+  showToast('记录已删除', 'success');
+  renderWorkHours();
+  if (currentPage === 'dashboard') renderDashboard();
+  if (currentPage === 'overtime') renderOvertime();
+}
+
+// ---------- 乘务费用页 ----------
+var exFilter = { dateFrom: '', dateTo: '', type: 'all', keyword: '' };
+
+function renderExpenses() {
+  var list = getExpenses().sort(function(a,b) { return b.date.localeCompare(a.date) || b.createdAt - a.createdAt; });
+
+  if (exFilter.dateFrom) list = list.filter(function(e) { return e.date >= exFilter.dateFrom; });
+  if (exFilter.dateTo) list = list.filter(function(e) { return e.date <= exFilter.dateTo; });
+  if (exFilter.type !== 'all') list = list.filter(function(e) { return e.type === exFilter.type; });
+  if (exFilter.keyword) {
+    var kw = exFilter.keyword.toLowerCase();
+    list = list.filter(function(e) {
+      return e.trainNumber.toLowerCase().indexOf(kw) >= 0 ||
+             (e.remark || '').toLowerCase().indexOf(kw) >= 0;
+    });
+  }
+
+  var total = list.reduce(function(s, e) { return s + e.amount; }, 0);
+  document.getElementById('ex-total').textContent = '¥' + total.toFixed(2);
+
+  var tbody = document.getElementById('ex-table-body');
+  if (list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">💰</div><div class="text">暂无费用记录</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(function(e) {
+    return '<tr>' +
+      '<td>' + e.date + '</td>' +
+      '<td>' + e.trainNumber + '</td>' +
+      '<td>' + e.type + '</td>' +
+      '<td><span class="badge ' + roleBadgeClass(e.role) + '">' + roleLabel(e.role) + '</span></td>' +
+      '<td class="mono">¥' + e.amount.toFixed(2) + '</td>' +
+      '<td>' + (e.remark || '-') + '</td>' +
+      '<td class="text-right">' +
+        '<button class="btn btn-sm btn-ghost" onclick="editExpense(\'' + e.id + '\')">编辑</button>' +
+        '<button class="btn btn-sm btn-ghost" style="color:#dc2626" onclick="deleteExpense(\'' + e.id + '\')">删除</button>' +
+      '</td></tr>';
+  }).join('');
+}
+
+function openExpenseForm(editId) {
+  var form = document.getElementById('ex-form');
+  form.reset();
+  form.dataset.editId = editId || '';
+  document.getElementById('ex-modal-title').textContent = editId ? '编辑费用记录' : '添加费用记录';
+  if (editId) {
+    var e = getExpenses().find(function(x) { return x.id === editId; });
+    if (e) {
+      form.ex_date.value = e.date;
+      form.ex_trainNumber.value = e.trainNumber;
+      form.ex_amount.value = e.amount;
+      form.ex_type.value = e.type;
+      form.ex_role.value = e.role;
+      form.ex_remark.value = e.remark || '';
+    }
+  } else {
+    form.ex_date.value = todayStr();
+    var p = getProfile();
+    if (p.defaultRole) form.ex_role.value = p.defaultRole;
+  }
+  openModal('ex-modal');
+}
+
+function submitExpense(e) {
+  e.preventDefault();
+  var form = document.getElementById('ex-form');
+  var editId = form.dataset.editId;
+  var amount = Number(form.ex_amount.value);
+  if (!form.ex_date.value || !form.ex_trainNumber.value || !form.ex_type.value || !form.ex_role.value || isNaN(amount) || amount <= 0) {
+    showToast('请填写完整有效信息', 'error');
+    return;
+  }
+  var item = {
+    date: form.ex_date.value,
+    trainNumber: form.ex_trainNumber.value.trim(),
+    amount: amount,
+    type: form.ex_type.value,
+    role: form.ex_role.value,
+    remark: form.ex_remark.value || undefined,
+  };
+  var list = getExpenses();
+  if (editId) {
+    var idx = list.findIndex(function(x) { return x.id === editId; });
+    if (idx >= 0) list[idx] = Object.assign({}, list[idx], item);
+    showToast('记录已更新', 'success');
+  } else {
+    item.id = genId('ce');
+    item.createdAt = Date.now();
+    item.source = 'user';
+    list.unshift(item);
+    showToast('费用记录已添加', 'success');
+  }
+  setExpenses(list);
+  closeModal('ex-modal');
+  renderExpenses();
+  if (currentPage === 'dashboard') renderDashboard();
+}
+
+function editExpense(id) { openExpenseForm(id); }
+function deleteExpense(id) {
+  if (!confirm('确定要删除这条费用记录吗？此操作不可撤销。')) return;
+  var list = getExpenses().filter(function(e) { return e.id !== id; });
+  setExpenses(list);
+  showToast('记录已删除', 'success');
+  renderExpenses();
+  if (currentPage === 'dashboard') renderDashboard();
+}
+
+// ---------- 超劳统计页 ----------
+var overtimeDimension = 'month';
+
+function switchOvertimeDim(dim) {
+  overtimeDimension = dim;
+  document.querySelectorAll('.ot-dim-tab').forEach(function(t) {
+    t.classList.toggle('active', t.getAttribute('data-dim') === dim);
+  });
+  renderOvertime();
+}
+
+function renderOvertime() {
+  var range = getDateRange(overtimeDimension);
+  var cfg = getConfig();
+  var stdMin = cfg.standardHoursPerDay * 60;
+  var all = getWorkHours().filter(function(w) { return inRange(w.date, range); });
+
+  var driverAll = all.filter(function(w) { return w.role === 'driver'; });
+  var asstAll = all.filter(function(w) { return w.role === 'assistant'; });
+
+  var driverTotal = driverAll.reduce(function(s,w){return s+w.duration},0);
+  var asstTotal = asstAll.reduce(function(s,w){return s+w.duration},0);
+
+  // 超劳 = 超过阈值的部分（月维度累计到阈值后起算，这里简化为每日超过标准工时的累计）
+  var driverOvertimeMin = driverAll.filter(function(w){return w.duration > stdMin})
+    .reduce(function(s,w){return s + w.duration - stdMin}, 0);
+  var asstOvertimeMin = asstAll.filter(function(w){return w.duration > stdMin})
+    .reduce(function(s,w){return s + w.duration - stdMin}, 0);
+  var driverOvertimeDays = driverAll.filter(function(w){return w.duration > stdMin}).length;
+  var asstOvertimeDays = asstAll.filter(function(w){return w.duration > stdMin}).length;
+
+  var driverPay = (driverOvertimeMin / 60 * cfg.driverOvertimeRate).toFixed(2);
+  var asstPay = (asstOvertimeMin / 60 * cfg.assistantOvertimeRate).toFixed(2);
+
+  document.getElementById('ot-driver-total').textContent = (driverTotal / 60).toFixed(1) + 'h';
+  document.getElementById('ot-driver-ot').textContent = (driverOvertimeMin / 60).toFixed(1) + 'h';
+  document.getElementById('ot-driver-days').textContent = driverOvertimeDays + ' 天';
+  document.getElementById('ot-driver-pay').textContent = '¥' + driverPay;
+
+  document.getElementById('ot-asst-total').textContent = (asstTotal / 60).toFixed(1) + 'h';
+  document.getElementById('ot-asst-ot').textContent = (asstOvertimeMin / 60).toFixed(1) + 'h';
+  document.getElementById('ot-asst-days').textContent = asstOvertimeDays + ' 天';
+  document.getElementById('ot-asst-pay').textContent = '¥' + asstPay;
+
+  // 明细
+  var driverOtList = driverAll.filter(function(w){return w.duration > stdMin})
+    .sort(function(a,b){return b.date.localeCompare(a.date)});
+  var asstOtList = asstAll.filter(function(w){return w.duration > stdMin})
+    .sort(function(a,b){return b.date.localeCompare(a.date)});
+
+  var dBody = document.getElementById('ot-driver-list');
+  dBody.innerHTML = driverOtList.length ? driverOtList.map(function(w) {
+    var ot = w.duration - stdMin;
+    var pay = (ot / 60 * cfg.driverOvertimeRate).toFixed(2);
+    return '<tr><td>' + w.date + '</td><td>' + (w.trainNumber || '-') + '</td>' +
+      '<td class="mono">' + formatDuration(w.duration) + '</td>' +
+      '<td class="mono" style="color:#dc2626">+' + formatDuration(ot) + '</td>' +
+      '<td class="mono">¥' + pay + '</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="empty-state"><div class="text">暂无超劳记录</div></td></tr>';
+
+  var aBody = document.getElementById('ot-asst-list');
+  aBody.innerHTML = asstOtList.length ? asstOtList.map(function(w) {
+    var ot = w.duration - stdMin;
+    var pay = (ot / 60 * cfg.assistantOvertimeRate).toFixed(2);
+    return '<tr><td>' + w.date + '</td><td>' + (w.trainNumber || '-') + '</td>' +
+      '<td class="mono">' + formatDuration(w.duration) + '</td>' +
+      '<td class="mono" style="color:#dc2626">+' + formatDuration(ot) + '</td>' +
+      '<td class="mono">¥' + pay + '</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="empty-state"><div class="text">暂无超劳记录</div></td></tr>';
+}
+
+// ---------- 设置页 ----------
+function renderSettings() {
+  var p = getProfile();
+  var c = getConfig();
+  var f = document.getElementById('settings-form');
+  f.name.value = p.name || '';
+  f.employeeId.value = p.employeeId || '';
+  f.defaultTrainType.value = p.defaultTrainType || '';
+  f.defaultRole.value = p.defaultRole || '';
+  f.driverRate.value = c.driverOvertimeRate;
+  f.assistantRate.value = c.assistantOvertimeRate;
+  f.standardHours.value = c.standardHoursPerDay;
+  f.monthlyThreshold.value = c.monthlyOvertimeThresholdHours;
+}
+
+function saveSettings(e) {
+  e.preventDefault();
+  var f = document.getElementById('settings-form');
+  var p = {
+    name: f.name.value.trim(),
+    employeeId: f.employeeId.value.trim(),
+    defaultTrainType: f.defaultTrainType.value || '',
+    defaultRole: f.defaultRole.value || '',
+  };
+  var c = {
+    standardHoursPerDay: Number(f.standardHours.value) || 10,
+    monthlyOvertimeThresholdHours: Number(f.monthlyThreshold.value) || 176,
+    driverOvertimeRate: Number(f.driverRate.value) || 50,
+    assistantOvertimeRate: Number(f.assistantRate.value) || 40,
+  };
+  setProfile(p);
+  setConfig(c);
+  showToast('保存成功', 'success');
+  if (currentPage === 'overtime') renderOvertime();
+  if (currentPage === 'dashboard') renderDashboard();
+}
+
+// 数据导出
+function exportAllData() {
+  var payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    app: '铁路工时管家',
+    data: {
+      workHours: getWorkHours(),
+      crewExpenses: getExpenses(),
+      userProfile: getProfile(),
+      overtimeConfig: getConfig(),
+    },
+  };
+  var json = JSON.stringify(payload, null, 2);
+  var blob = new Blob([json], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var now = new Date();
+  var y = now.getFullYear();
+  var m = String(now.getMonth()+1).padStart(2,'0');
+  var d = String(now.getDate()).padStart(2,'0');
+  a.href = url;
+  a.download = '铁路工时管家_备份_' + y + m + d + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('数据已导出', 'success');
+}
+
+// 数据导入
+var importFileInput = null;
+function importDataClick() {
+  if (!importFileInput) {
+    importFileInput = document.createElement('input');
+    importFileInput.type = 'file';
+    importFileInput.accept = '.json,application/json';
+    importFileInput.onchange = function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function() {
+        try {
+          var parsed = JSON.parse(reader.result);
+          if (!parsed || !parsed.data) throw new Error('数据格式不正确');
+          var d = parsed.data;
+          if (!Array.isArray(d.workHours) || !Array.isArray(d.crewExpenses)) {
+            throw new Error('工时或费用数据格式无效');
+          }
+          var msg = '即将导入 ' + d.workHours.length + ' 条工时记录、' + d.crewExpenses.length + '条费用记录。\n导入将覆盖当前所有数据，确定继续吗？';
+          if (!confirm(msg)) return;
+          setWorkHours(d.workHours);
+          setExpenses(d.crewExpenses);
+          if (d.userProfile) setProfile(d.userProfile);
+          if (d.overtimeConfig) setConfig(d.overtimeConfig);
+          showToast('数据导入成功', 'success');
+          handleRoute();
+        } catch(err) {
+          showToast('导入失败：' + (err.message || '文件格式不正确'), 'error');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    };
+  }
+  importFileInput.click();
+}
+
+// ---------- 初始化 ----------
+document.addEventListener('DOMContentLoaded', function() {
+  initData();
+  handleRoute();
+  window.addEventListener('resize', function() {
+    if (currentPage === 'dashboard') renderTrendChart();
+  });
+});
+
+</script>
+</body>
+</html>
