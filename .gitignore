@@ -1,0 +1,23 @@
+# 构建产物
+*.apk
+*.aab
+*.zip
+
+# 临时文件
+*temp*
+*tmp*
+*.log
+
+# 系统文件
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# 旧版本源码（保留最新版）
+铁路工时管家_离线版_20260814.html
+铁路工时管家_离线版_202608181.57.html
+
+# 截图
+*.png
+*.jpg
+*.jpeg
